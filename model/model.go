@@ -12,3 +12,8 @@ type Stock struct {
 	TradeCount     int    `json:"TradeCount"`
 	PutPercentage  int    `json:"PutPercentage"`
 }
+
+type DayTask struct {
+	SymbolsStatuses map[string]bool `firestore:"symbolsStatuses"`
+	ID              string          `firestore:"id"`
+}
