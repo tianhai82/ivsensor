@@ -6,7 +6,7 @@ import (
 	"github.com/tianhai82/ivsensor/crawler"
 )
 
-func main() {
+func main_bak() {
 	err := crawler.CrawlSymbol("BLDP")
 	if err != nil {
 		fmt.Println(err)
