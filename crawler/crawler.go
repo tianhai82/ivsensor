@@ -8,11 +8,15 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"github.com/gin-gonic/gin"
+	"github.com/piquette/finance-go"
 	"github.com/piquette/finance-go/chart"
 	"github.com/piquette/finance-go/datetime"
 	"github.com/piquette/finance-go/options"
+	"github.com/piquette/finance-go/quote"
 	"github.com/tianhai82/ivsensor/firebase"
 	"github.com/tianhai82/ivsensor/model"
+	"github.com/tianhai82/ivsensor/optionCalculator"
+	"github.com/tianhai82/ivsensor/ta"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -51,7 +55,7 @@ func HandleCrawlOption(c *gin.Context) {
 	for symbol, status := range dayTask.SymbolsStatuses {
 		if !status {
 			fmt.Println("processing", symbol)
-			crawlSymbol(symbol)
+			CrawlSymbol(symbol)
 			time.Sleep(1 * time.Second)
 			firebase.FirestoreClient.Collection("task").Doc(dateStr).Update(context.Background(),
 				[]firestore.Update{
@@ -70,14 +74,14 @@ func HandleCrawlOption(c *gin.Context) {
 	fmt.Println("done")
 }
 
-func crawlSymbol(symbol string) error {
+func CrawlSymbol(symbol string) error {
 	println("crawling", symbol)
 
-	// q, err := quote.Get(symbol)
-	// if err != nil {
-	// 	fmt.Println("fail to get quote for", symbol, err)
-	// }
-	// latestPrice := q.RegularMarketPrice
+	q, err := quote.Get(symbol)
+	if err != nil {
+		fmt.Println("fail to get quote for", symbol, err)
+	}
+	latestPrice := q.RegularMarketPrice
 
 	straddle := options.GetStraddle(symbol)
 	meta := straddle.Meta()
@@ -86,7 +90,7 @@ func crawlSymbol(symbol string) error {
 		dt := datetime.FromUnix(d)
 		days := dt.Time().Sub(now).Hours() / 24
 		dte := int(math.Ceil(days))
-		if dte > 60 || dte <= 0 {
+		if dte > 70 || dte <= 0 {
 			continue
 		}
 
@@ -99,41 +103,59 @@ func crawlSymbol(symbol string) error {
 			continue
 		}
 
+		start := time.Now()
+		start = start.AddDate(0, -3, 0)
+		end := time.Now()
 		params := &chart.Params{
 			Symbol:   symbol,
 			Interval: "1wk",
+			Start:    datetime.New(&start),
+			End:      datetime.New(&end),
 		}
 		quoteIter := chart.Get(params)
+		var bars []finance.ChartBar
 		for quoteIter.Next() {
-			fmt.Println(quoteIter.Bar())
+			bars = append(bars, *quoteIter.Bar())
+		}
+		atr, err := ta.ATR(bars, 4)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		atrp, err := ta.ATRP(bars, 4)
+		if err != nil {
+			fmt.Println(err)
+			continue
 		}
 
-		// contracts := optionCalculator.NewOptionCalculator(latestPrice, 10, iter)
-		// putIV, err := contracts.GetATMPutIV()
-		// if err != nil {
-		// 	fmt.Println("fail to get put iv", symbol, dte)
-		// 	continue
-		// }
-		// callIV, err := contracts.GetATMCallIV()
-		// if err != nil {
-		// 	fmt.Println("fail to get call iv", symbol, dte)
-		// 	continue
-		// }
-		// putPremium, err := contracts.GetATMPutPremium()
-		// if err != nil {
-		// 	fmt.Println("fail to get put premium", symbol, dte)
-		// 	continue
-		// }
-		// callPremium, err := contracts.GetATMCallPremium()
-		// if err != nil {
-		// 	fmt.Println("fail to get call premium", symbol, dte)
-		// 	continue
-		// }
-		// fmt.Printf("%s: %.2f. DTE: %d. PutIV: %.2f. CallIV: %.2f. Put Premium %.2f. Call Premium %.2f.\n",
-		// 	symbol, latestPrice, dte,
-		// 	putIV, callIV,
-		// 	putPremium, callPremium,
-		// )
+		optCalc := optionCalculator.NewOptionCalculator(latestPrice, atr, dte, iter)
+		putIV, err := optCalc.GetATMPutIV()
+		if err != nil {
+			fmt.Println("fail to get put iv", symbol, dte)
+			continue
+		}
+		callIV, err := optCalc.GetATMCallIV()
+		if err != nil {
+			fmt.Println("fail to get call iv", symbol, dte)
+			continue
+		}
+		putStrike, putPremium, putPremiumPercentAnnual, err := optCalc.GetPutPremium()
+		if err != nil {
+			fmt.Println("fail to get put premium", symbol, dte)
+
+		}
+		callStrike, callPremium, callPremiumAnnual, err := optCalc.GetCallPremium()
+		if err != nil {
+			fmt.Println("fail to get call premium", symbol, dte)
+
+		}
+		fmt.Printf("%s: %.2f. DTE: %d. PutIV: %.2f. CallIV: %.2f. Put strike %.2f. PutPremium %.2f. Put Premium Percent %.2f. Call strike %.2f. CallPremium %.2f. Call Premium Percent %.2f. ATRP: %.2f \n",
+			symbol, latestPrice, dte,
+			putIV, callIV,
+			putStrike, putPremium, putPremiumPercentAnnual,
+			callStrike, callPremium, callPremiumAnnual,
+			atrp,
+		)
 		time.Sleep(500 * time.Millisecond)
 	}
 	return nil
