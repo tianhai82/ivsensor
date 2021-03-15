@@ -17,3 +17,21 @@ type DayTask struct {
 	SymbolsStatuses map[string]bool `firestore:"symbolsStatuses"`
 	ID              string          `firestore:"id"`
 }
+
+type OptionRecord struct {
+	Symbol                       string
+	StockPrice                   float64
+	NormalizedATR                float64
+	WeeklyATR                    float64
+	WeeklyATRP                   float64
+	DTE                          int
+	ExpiryDate                   string
+	PutIVAtm                     float64
+	CallIVAtm                    float64
+	PutStrike                    float64
+	PutPremium                   float64
+	PutPremiumAnnualizedPercent  float64
+	CallStrike                   float64
+	CallPremium                  float64
+	CallPremiumAnnualizedPercent float64
+}

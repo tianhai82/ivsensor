@@ -51,12 +51,19 @@ func HandleCrawlOption(c *gin.Context) {
 		}
 	}
 
-	i := 0
+	// i := 0
 	for symbol, status := range dayTask.SymbolsStatuses {
 		if !status {
 			fmt.Println("processing", symbol)
-			CrawlSymbol(symbol)
-			time.Sleep(1 * time.Second)
+			records, err := CrawlSymbol(symbol)
+			if err != nil {
+				fmt.Println("cannot crawl", symbol, err)
+			}
+
+			for _, rec := range records {
+				firebase.FirestoreClient.Collection("record").Add(context.Background(), rec)
+			}
+
 			firebase.FirestoreClient.Collection("task").Doc(dateStr).Update(context.Background(),
 				[]firestore.Update{
 					{
@@ -65,16 +72,16 @@ func HandleCrawlOption(c *gin.Context) {
 					},
 				},
 			)
-			i++
-			if i > 1 {
-				break
-			}
+			// i++
+			// if i > 1 {
+			// 	break
+			// }
 		}
 	}
 	fmt.Println("done")
 }
 
-func CrawlSymbol(symbol string) error {
+func CrawlSymbol(symbol string) ([]model.OptionRecord, error) {
 	println("crawling", symbol)
 
 	q, err := quote.Get(symbol)
@@ -83,9 +90,33 @@ func CrawlSymbol(symbol string) error {
 	}
 	latestPrice := q.RegularMarketPrice
 
+	start := time.Now()
+	start = start.AddDate(0, -3, 0)
+	end := time.Now()
+	params := &chart.Params{
+		Symbol:   symbol,
+		Interval: "1wk",
+		Start:    datetime.New(&start),
+		End:      datetime.New(&end),
+	}
+	quoteIter := chart.Get(params)
+	var bars []finance.ChartBar
+	for quoteIter.Next() {
+		bars = append(bars, *quoteIter.Bar())
+	}
+	atr, err := ta.ATR(bars, 4)
+	if err != nil {
+		return nil, err
+	}
+	atrp, err := ta.ATRP(bars, 4)
+	if err != nil {
+		return nil, err
+	}
+
 	straddle := options.GetStraddle(symbol)
 	meta := straddle.Meta()
 	now := time.Now()
+	records := make([]model.OptionRecord, 0)
 	for _, d := range meta.AllExpirationDates {
 		dt := datetime.FromUnix(d)
 		days := dt.Time().Sub(now).Hours() / 24
@@ -103,31 +134,6 @@ func CrawlSymbol(symbol string) error {
 			continue
 		}
 
-		start := time.Now()
-		start = start.AddDate(0, -3, 0)
-		end := time.Now()
-		params := &chart.Params{
-			Symbol:   symbol,
-			Interval: "1wk",
-			Start:    datetime.New(&start),
-			End:      datetime.New(&end),
-		}
-		quoteIter := chart.Get(params)
-		var bars []finance.ChartBar
-		for quoteIter.Next() {
-			bars = append(bars, *quoteIter.Bar())
-		}
-		atr, err := ta.ATR(bars, 4)
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-		atrp, err := ta.ATRP(bars, 4)
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-
 		optCalc := optionCalculator.NewOptionCalculator(latestPrice, atr, dte, iter)
 		putIV, err := optCalc.GetATMPutIV()
 		if err != nil {
@@ -142,21 +148,33 @@ func CrawlSymbol(symbol string) error {
 		putStrike, putPremium, putPremiumPercentAnnual, err := optCalc.GetPutPremium()
 		if err != nil {
 			fmt.Println("fail to get put premium", symbol, dte)
-
 		}
 		callStrike, callPremium, callPremiumAnnual, err := optCalc.GetCallPremium()
 		if err != nil {
 			fmt.Println("fail to get call premium", symbol, dte)
-
 		}
-		fmt.Printf("%s: %.2f. DTE: %d. PutIV: %.2f. CallIV: %.2f. Put strike %.2f. PutPremium %.2f. Put Premium Percent %.2f. Call strike %.2f. CallPremium %.2f. Call Premium Percent %.2f. ATRP: %.2f \n",
-			symbol, latestPrice, dte,
-			putIV, callIV,
-			putStrike, putPremium, putPremiumPercentAnnual,
-			callStrike, callPremium, callPremiumAnnual,
-			atrp,
-		)
+		atrNormalized := atr * math.Pow((float64(dte)/7.0), 0.75)
+		rec := model.OptionRecord{
+			Symbol:                       symbol,
+			StockPrice:                   latestPrice,
+			NormalizedATR:                atrNormalized,
+			WeeklyATR:                    atr,
+			WeeklyATRP:                   atrp,
+			DTE:                          dte,
+			ExpiryDate:                   dt.Time().Format("2006-01-02"),
+			PutIVAtm:                     putIV,
+			CallIVAtm:                    callIV,
+			PutStrike:                    putStrike,
+			PutPremium:                   putPremium,
+			PutPremiumAnnualizedPercent:  putPremiumPercentAnnual,
+			CallStrike:                   callStrike,
+			CallPremium:                  callPremium,
+			CallPremiumAnnualizedPercent: callPremiumAnnual,
+		}
+		if rec.PutPremiumAnnualizedPercent > 0.30 || rec.CallPremiumAnnualizedPercent > 0.3 {
+			records = append(records, rec)
+		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	return nil
+	return records, nil
 }
