@@ -187,7 +187,7 @@ func CrawlSymbol(symbol string) ([]model.OptionRecord, error) {
 		if rec.PutPremiumAnnualizedPercent > 0.30 || rec.CallPremiumAnnualizedPercent > 0.3 {
 			records = append(records, rec)
 		}
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 	return records, nil
 }
