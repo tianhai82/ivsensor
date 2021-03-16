@@ -84,7 +84,7 @@ func HandleCrawlOption(c *gin.Context) {
 			}
 		}
 		duration := time.Since(startTime)
-		if duration.Minutes() > 45 {
+		if duration.Minutes() > 55 {
 			c.AbortWithError(http.StatusRequestTimeout, fmt.Errorf("taking too long"))
 			return
 		}
