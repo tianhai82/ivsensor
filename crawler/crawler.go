@@ -140,7 +140,7 @@ func CrawlSymbol(symbol string) ([]model.OptionRecord, error) {
 	for _, d := range meta.AllExpirationDates {
 		dt := datetime.FromUnix(d)
 		days := dt.Time().Sub(now).Hours() / 24
-		dte := int(math.Ceil(days))
+		dte := int(math.Ceil(days + 1))
 		if dte > 70 || dte <= 0 {
 			continue
 		}
