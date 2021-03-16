@@ -53,9 +53,16 @@ func init() {
 	}
 	reader, err := bucket.Object("high_volume.json").NewReader(context.Background())
 	dec := json.NewDecoder(reader)
-	err = dec.Decode(&Stocks)
+	var temp []model.Stock
+	err = dec.Decode(&temp)
 	if err != nil {
 		println(err)
 		return
 	}
+	for _, s := range temp {
+		if s.AvgVolume90Day > 200 {
+			Stocks = append(Stocks, s)
+		}
+	}
+	println(len(Stocks))
 }

@@ -2,6 +2,7 @@ package ta
 
 import (
 	"errors"
+	"fmt"
 	"sort"
 
 	"github.com/piquette/finance-go"
@@ -31,7 +32,10 @@ func ATRP(bars []finance.ChartBar, period int) (float64, error) {
 		if i == 0 {
 			continue
 		}
-		tr := TRNormalized(bar, bars[i-1])
+		tr, err := TRNormalized(bar, bars[i-1])
+		if err != nil {
+			continue
+		}
 		trueRangePercents = append(trueRangePercents, tr)
 	}
 	return EMA(trueRangePercents, period)
@@ -45,12 +49,16 @@ func TR(currentBar, prevBar finance.ChartBar) float64 {
 	return f
 }
 
-func TRNormalized(currentBar, prevBar finance.ChartBar) float64 {
+func TRNormalized(currentBar, prevBar finance.ChartBar) (float64, error) {
 	a := currentBar.High.Sub(currentBar.Low)
 	b := currentBar.High.Sub(prevBar.Close).Abs()
 	c := currentBar.Low.Sub(prevBar.Close).Abs()
-	f, _ := decimal.Max(a, b, c).Div(prevBar.Close).Float64()
-	return f
+	prev := prevBar.Close
+	if prev.Equal(decimal.NewFromFloat(0.0)) {
+		return 0.0, fmt.Errorf("prev bar closed at zero")
+	}
+	f, _ := decimal.Max(a, b, c).Div(prev).Float64()
+	return f, nil
 }
 
 func EMA(array []float64, period int) (float64, error) {

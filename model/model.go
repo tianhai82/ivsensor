@@ -1,16 +1,16 @@
 package model
 
 type Stock struct {
-	TotalVolume    int    `json:"TotalVolume"`
-	Symbol         string `json:"Symbol"`
-	CompanyName    string `json:"CompanyName"`
-	Sector         string `json:"Sector"`
-	CallVolume     int    `json:"CallVolume"`
-	PutVolume      int    `json:"PutVolume"`
-	AvgVolume90Day int    `json:"AvgVolume_90Day"`
-	RelativeVolume int    `json:"RelativeVolume"`
-	TradeCount     int    `json:"TradeCount"`
-	PutPercentage  int    `json:"PutPercentage"`
+	TotalVolume    int     `json:"TotalVolume"`
+	Symbol         string  `json:"Symbol"`
+	CompanyName    string  `json:"CompanyName"`
+	Sector         string  `json:"Sector"`
+	CallVolume     int     `json:"CallVolume"`
+	PutVolume      int     `json:"PutVolume"`
+	AvgVolume90Day int     `json:"AvgVolume_90Day"`
+	RelativeVolume float64 `json:"RelativeVolume"`
+	TradeCount     int     `json:"TradeCount"`
+	PutPercentage  float64 `json:"PutPercentage"`
 }
 
 type DayTask struct {
@@ -19,6 +19,7 @@ type DayTask struct {
 }
 
 type OptionRecord struct {
+	Date                         string
 	Symbol                       string
 	StockPrice                   float64
 	NormalizedATR                float64

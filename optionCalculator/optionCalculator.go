@@ -56,6 +56,9 @@ func (optCalc *OptionCalculator) GetPutPremium() (float64, float64, float64, err
 	if optCalc.putContract == nil {
 		return 0.0, 0.0, 0.0, fmt.Errorf("missing contract")
 	}
+	if optCalc.putContract.Volume < 5 || optCalc.putContract.OpenInterest < 20 {
+		return 0.0, 0.0, 0.0, fmt.Errorf("volume too low")
+	}
 	premium := (optCalc.putContract.Ask + optCalc.putContract.Bid) / 2
 	premiumAnnualised := premium / optCalc.putContract.Strike / float64(optCalc.DTE) * 365.0
 	return optCalc.putContract.Strike, premium, premiumAnnualised, nil
@@ -63,6 +66,9 @@ func (optCalc *OptionCalculator) GetPutPremium() (float64, float64, float64, err
 func (optCalc *OptionCalculator) GetCallPremium() (float64, float64, float64, error) {
 	if optCalc.callContract == nil {
 		return 0.0, 0.0, 0.0, fmt.Errorf("missing contract")
+	}
+	if optCalc.callContract.Volume < 5 || optCalc.callContract.OpenInterest < 20 {
+		return 0.0, 0.0, 0.0, fmt.Errorf("volume too low")
 	}
 	premium := (optCalc.callContract.Ask + optCalc.callContract.Bid) / 2
 	premiumAnnualised := premium / optCalc.callContract.Strike / float64(optCalc.DTE) * 365.0

@@ -2,8 +2,10 @@ package crawler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
+	"net/http"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -22,6 +24,7 @@ import (
 )
 
 func HandleCrawlOption(c *gin.Context) {
+	startTime := time.Now()
 	dateStr := time.Now().Format("2006-01-02")
 	task, err := firebase.FirestoreClient.Collection("task").Doc(dateStr).Get(context.Background())
 	dayTask := model.DayTask{
@@ -51,8 +54,11 @@ func HandleCrawlOption(c *gin.Context) {
 		}
 	}
 
-	// i := 0
+	i := 0
+	total := len(dayTask.SymbolsStatuses)
+
 	for symbol, status := range dayTask.SymbolsStatuses {
+		i++
 		if !status {
 			fmt.Println("processing", symbol)
 			records, err := CrawlSymbol(symbol)
@@ -72,10 +78,15 @@ func HandleCrawlOption(c *gin.Context) {
 					},
 				},
 			)
-			// i++
-			// if i > 1 {
-			// 	break
-			// }
+
+			if i%10 == 0 {
+				fmt.Printf("%d out of %d.\n", i, total)
+			}
+		}
+		duration := time.Since(startTime)
+		if duration.Minutes() > 45 {
+			c.AbortWithError(http.StatusRequestTimeout, fmt.Errorf("taking too long"))
+			return
 		}
 	}
 	fmt.Println("done")
@@ -85,11 +96,14 @@ func CrawlSymbol(symbol string) ([]model.OptionRecord, error) {
 	println("crawling", symbol)
 
 	q, err := quote.Get(symbol)
-	if err != nil {
+	if err != nil || q == nil {
 		fmt.Println("fail to get quote for", symbol, err)
+		return nil, fmt.Errorf("fail to get quote for %s", symbol)
 	}
 	latestPrice := q.RegularMarketPrice
-
+	if latestPrice > 150 {
+		return nil, fmt.Errorf("ignoring high priced stocks")
+	}
 	start := time.Now()
 	start = start.AddDate(0, -3, 0)
 	end := time.Now()
@@ -114,7 +128,13 @@ func CrawlSymbol(symbol string) ([]model.OptionRecord, error) {
 	}
 
 	straddle := options.GetStraddle(symbol)
+	if straddle == nil || straddle.Count() == 0 {
+		return nil, errors.New("no straddle found")
+	}
 	meta := straddle.Meta()
+	if meta == nil {
+		return nil, errors.New("no straddle found")
+	}
 	now := time.Now()
 	records := make([]model.OptionRecord, 0)
 	for _, d := range meta.AllExpirationDates {
@@ -135,26 +155,19 @@ func CrawlSymbol(symbol string) ([]model.OptionRecord, error) {
 		}
 
 		optCalc := optionCalculator.NewOptionCalculator(latestPrice, atr, dte, iter)
-		putIV, err := optCalc.GetATMPutIV()
-		if err != nil {
-			fmt.Println("fail to get put iv", symbol, dte)
-			continue
-		}
-		callIV, err := optCalc.GetATMCallIV()
-		if err != nil {
-			fmt.Println("fail to get call iv", symbol, dte)
-			continue
-		}
-		putStrike, putPremium, putPremiumPercentAnnual, err := optCalc.GetPutPremium()
-		if err != nil {
-			fmt.Println("fail to get put premium", symbol, dte)
-		}
-		callStrike, callPremium, callPremiumAnnual, err := optCalc.GetCallPremium()
-		if err != nil {
-			fmt.Println("fail to get call premium", symbol, dte)
-		}
+		putIV, _ := optCalc.GetATMPutIV()
+
+		callIV, _ := optCalc.GetATMCallIV()
+
+		putStrike, putPremium, putPremiumPercentAnnual, _ := optCalc.GetPutPremium()
+
+		callStrike, callPremium, callPremiumAnnual, _ := optCalc.GetCallPremium()
+
 		atrNormalized := atr * math.Pow((float64(dte)/7.0), 0.75)
+
+		now := time.Now().UTC()
 		rec := model.OptionRecord{
+			Date:                         now.Format("2006-01-02"),
 			Symbol:                       symbol,
 			StockPrice:                   latestPrice,
 			NormalizedATR:                atrNormalized,
