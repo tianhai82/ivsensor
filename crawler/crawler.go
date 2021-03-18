@@ -15,10 +15,12 @@ import (
 	"github.com/piquette/finance-go/datetime"
 	"github.com/piquette/finance-go/options"
 	"github.com/piquette/finance-go/quote"
+	"github.com/plandem/xlsx"
 	"github.com/tianhai82/ivsensor/firebase"
 	"github.com/tianhai82/ivsensor/model"
 	"github.com/tianhai82/ivsensor/optionCalculator"
 	"github.com/tianhai82/ivsensor/ta"
+	"github.com/tianhai82/ivsensor/telegram"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -89,7 +91,87 @@ func HandleCrawlOption(c *gin.Context) {
 			return
 		}
 	}
+	saveOptionsRecords(dateStr)
+	msg := fmt.Sprintf("Options analysis done for %s. Download excel report at https://api-zwv4vcvbqq-uc.a.run.app/doc/%s.xlsx", dateStr, dateStr)
+	telegram.SendMessage(msg, "21450012", "1743013035:AAF43wU6BX4UOcHwL-vX2OGcM1xMhBoe0Ug")
 	fmt.Println("done")
+}
+
+func saveOptionsRecords(today string) error {
+	bucket, err := firebase.StorageClient.DefaultBucket()
+	if err != nil {
+		fmt.Println("fail to get bucket", err)
+		return err
+	}
+
+	docIter := firebase.FirestoreClient.Collection("record").Where("Date", "==", today).Documents(context.Background())
+	docs, err := docIter.GetAll()
+	if err != nil {
+		fmt.Println("fail to retrieve records from firestore", err)
+		return err
+	}
+	excel := xlsx.New()
+	sheet := excel.AddSheet("options")
+	writeHeader(sheet)
+	row := 1
+	for _, doc := range docs {
+		var rec model.OptionRecord
+		err = doc.DataTo(&rec)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		writeRecord(sheet, row, rec)
+		row++
+	}
+
+	filename := fmt.Sprintf("%s.xlsx", today)
+	writer := bucket.Object(filename).NewWriter(context.Background())
+	err = excel.SaveAs(writer)
+	if err != nil {
+		fmt.Println("fail to save excel to cloud storage", err)
+		return err
+	}
+	for _, doc := range docs {
+		doc.Ref.Delete(context.Background())
+	}
+	return nil
+}
+
+func writeRecord(sheet xlsx.Sheet, row int, rec model.OptionRecord) {
+	sheet.Cell(0, row).SetText(rec.Symbol)
+	sheet.Cell(1, row).SetFloat(rec.StockPrice)
+	sheet.Cell(2, row).SetFloat(rec.NormalizedATR)
+	sheet.Cell(3, row).SetFloat(rec.WeeklyATR)
+	sheet.Cell(4, row).SetFloat(rec.WeeklyATRP)
+	sheet.Cell(5, row).SetInt(rec.DTE)
+	sheet.Cell(6, row).SetText(rec.ExpiryDate)
+	sheet.Cell(7, row).SetText(rec.PutIVAtm)
+	sheet.Cell(8, row).SetText(rec.CallIVAtm)
+	sheet.Cell(9, row).SetText(rec.PutStrike)
+	sheet.Cell(10, row).SetText(rec.PutPremium)
+	sheet.Cell(11, row).SetText(rec.PutPremiumAnnualizedPercent)
+	sheet.Cell(12, row).SetText(rec.CallStrike)
+	sheet.Cell(13, row).SetText(rec.CallPremium)
+	sheet.Cell(14, row).SetText(rec.CallPremiumAnnualizedPercent)
+}
+
+func writeHeader(sheet xlsx.Sheet) {
+	sheet.Cell(0, 0).SetText("Symbol")
+	sheet.Cell(1, 0).SetText("Stock Price")
+	sheet.Cell(2, 0).SetText("Normalized ATR")
+	sheet.Cell(3, 0).SetText("Weekly ATR")
+	sheet.Cell(4, 0).SetText("Weekly ATRP")
+	sheet.Cell(5, 0).SetText("DTE")
+	sheet.Cell(6, 0).SetText("Expiry Date")
+	sheet.Cell(7, 0).SetText("Put IV ATM")
+	sheet.Cell(8, 0).SetText("Call IV ATM")
+	sheet.Cell(9, 0).SetText("Put Strike")
+	sheet.Cell(10, 0).SetText("Put Premium")
+	sheet.Cell(11, 0).SetText("Put Premium Annualized %")
+	sheet.Cell(12, 0).SetText("Call Strike")
+	sheet.Cell(13, 0).SetText("Call Premium")
+	sheet.Cell(14, 0).SetText("Call Premium Annualized %")
 }
 
 func CrawlSymbol(symbol string) ([]model.OptionRecord, error) {
