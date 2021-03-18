@@ -52,6 +52,10 @@ func init() {
 		return
 	}
 	reader, err := bucket.Object("high_volume.json").NewReader(context.Background())
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	dec := json.NewDecoder(reader)
 	var temp []model.Stock
 	err = dec.Decode(&temp)
