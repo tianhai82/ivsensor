@@ -62,7 +62,6 @@ func HandleCrawlOption(c *gin.Context) {
 	for symbol, status := range dayTask.SymbolsStatuses {
 		i++
 		if !status {
-			fmt.Println("processing", symbol)
 			records, err := CrawlSymbol(symbol)
 			if err != nil {
 				fmt.Println("cannot crawl", symbol, err)
