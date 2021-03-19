@@ -108,11 +108,7 @@ func findATMContracts(currentPrice float64, straddles []*finance.Straddle) *atm 
 }
 
 func findPutContract(price, weeklyAtr float64, dte int, straddles []*finance.Straddle) *finance.Contract {
-	daysInWeek := 7.0
-	if dte > 5 {
-		daysInWeek = 5.0
-	}
-	atr := weeklyAtr * math.Pow((float64(dte)/daysInWeek), 0.7)
+	atr := weeklyAtr * math.Pow(numOfWeeks(dte), 0.7)
 	s := price - atr
 	var prevPut *finance.Contract
 	for _, straddle := range straddles {
@@ -125,11 +121,7 @@ func findPutContract(price, weeklyAtr float64, dte int, straddles []*finance.Str
 	return prevPut
 }
 func findCallContract(price, weeklyAtr float64, dte int, straddles []*finance.Straddle) *finance.Contract {
-	daysInWeek := 7.0
-	if dte > 5 {
-		daysInWeek = 5.0
-	}
-	atr := weeklyAtr * math.Pow((float64(dte)/daysInWeek), 0.7)
+	atr := weeklyAtr * math.Pow(numOfWeeks(dte), 0.7)
 	s := price + atr
 	var currentCall *finance.Contract
 	for _, straddle := range straddles {
@@ -139,4 +131,10 @@ func findCallContract(price, weeklyAtr float64, dte int, straddles []*finance.St
 		}
 	}
 	return currentCall
+}
+func numOfWeeks(dte int) float64 {
+	if dte <= 7 && dte >= 5 {
+		return 1.0
+	}
+	return float64(dte/7) + float64(dte%7)/5.0
 }
