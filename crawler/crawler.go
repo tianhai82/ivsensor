@@ -109,6 +109,7 @@ func saveOptionsRecords(today string) error {
 		fmt.Println("fail to retrieve records from firestore", err)
 		return err
 	}
+
 	excel := xlsx.New()
 	sheet := excel.AddSheet("options")
 	writeHeader(sheet)
@@ -129,6 +130,11 @@ func saveOptionsRecords(today string) error {
 	err = excel.SaveAs(writer)
 	if err != nil {
 		fmt.Println("fail to save excel to cloud storage", err)
+		return err
+	}
+	err = writer.Close()
+	if err != nil {
+		fmt.Println("fail to close cloud storage writer", err)
 		return err
 	}
 	for _, doc := range docs {
