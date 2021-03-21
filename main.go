@@ -11,5 +11,6 @@ func main() {
 	r := gin.Default()
 	r.GET("/api/crawlOptions", crawler.HandleCrawlOption)
 	r.GET("/doc/:filename", doc.HandleDownload)
+	r.GET("/gendoc/:date", doc.GenDoc)
 	r.Run()
 }

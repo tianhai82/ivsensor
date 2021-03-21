@@ -112,7 +112,7 @@ func saveOptionsRecords(today string) error {
 
 	excel := xlsx.New()
 	sheet := excel.AddSheet("options")
-	writeHeader(sheet)
+	WriteHeader(sheet)
 	row := 1
 	for _, doc := range docs {
 		var rec model.OptionRecord
@@ -121,7 +121,7 @@ func saveOptionsRecords(today string) error {
 			fmt.Println(err)
 			continue
 		}
-		writeRecord(sheet, row, rec)
+		WriteRecord(sheet, row, rec)
 		row++
 	}
 
@@ -137,13 +137,13 @@ func saveOptionsRecords(today string) error {
 		fmt.Println("fail to close cloud storage writer", err)
 		return err
 	}
-	for _, doc := range docs {
-		doc.Ref.Delete(context.Background())
-	}
+	// for _, doc := range docs {
+	// 	doc.Ref.Delete(context.Background())
+	// }
 	return nil
 }
 
-func writeRecord(sheet xlsx.Sheet, row int, rec model.OptionRecord) {
+func WriteRecord(sheet xlsx.Sheet, row int, rec model.OptionRecord) {
 	sheet.Cell(0, row).SetText(rec.Symbol)
 	sheet.Cell(1, row).SetFloat(rec.StockPrice)
 	sheet.Cell(2, row).SetFloat(rec.NormalizedATR)
@@ -151,17 +151,17 @@ func writeRecord(sheet xlsx.Sheet, row int, rec model.OptionRecord) {
 	sheet.Cell(4, row).SetFloat(rec.WeeklyATRP)
 	sheet.Cell(5, row).SetInt(rec.DTE)
 	sheet.Cell(6, row).SetText(rec.ExpiryDate)
-	sheet.Cell(7, row).SetText(rec.PutIVAtm)
-	sheet.Cell(8, row).SetText(rec.CallIVAtm)
-	sheet.Cell(9, row).SetText(rec.PutStrike)
-	sheet.Cell(10, row).SetText(rec.PutPremium)
-	sheet.Cell(11, row).SetText(rec.PutPremiumAnnualizedPercent)
-	sheet.Cell(12, row).SetText(rec.CallStrike)
-	sheet.Cell(13, row).SetText(rec.CallPremium)
-	sheet.Cell(14, row).SetText(rec.CallPremiumAnnualizedPercent)
+	sheet.Cell(7, row).SetFloat(rec.PutIVAtm)
+	sheet.Cell(8, row).SetFloat(rec.CallIVAtm)
+	sheet.Cell(9, row).SetFloat(rec.PutStrike)
+	sheet.Cell(10, row).SetFloat(rec.PutPremium)
+	sheet.Cell(11, row).SetFloat(rec.PutPremiumAnnualizedPercent)
+	sheet.Cell(12, row).SetFloat(rec.CallStrike)
+	sheet.Cell(13, row).SetFloat(rec.CallPremium)
+	sheet.Cell(14, row).SetFloat(rec.CallPremiumAnnualizedPercent)
 }
 
-func writeHeader(sheet xlsx.Sheet) {
+func WriteHeader(sheet xlsx.Sheet) {
 	sheet.Cell(0, 0).SetText("Symbol")
 	sheet.Cell(1, 0).SetText("Stock Price")
 	sheet.Cell(2, 0).SetText("Normalized ATR")
