@@ -250,7 +250,7 @@ func CrawlSymbol(symbol string) ([]model.OptionRecord, error) {
 
 		callStrike, callPremium, callPremiumAnnual, _ := optCalc.GetCallPremium()
 
-		atrNormalized := atr * math.Pow((float64(dte)/7.0), 0.75)
+		atrNormalized := atr * math.Pow(optionCalculator.NumOfWeeks(dte), 0.7)
 
 		now := time.Now().UTC()
 		rec := model.OptionRecord{

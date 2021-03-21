@@ -60,7 +60,7 @@ func (optCalc *OptionCalculator) GetPutPremium() (float64, float64, float64, err
 		return 0.0, 0.0, 0.0, fmt.Errorf("volume too low")
 	}
 	premium := (optCalc.putContract.Ask + optCalc.putContract.Bid) / 2
-	premiumAnnualised := premium / optCalc.putContract.Strike / float64(optCalc.DTE) * 365.0
+	premiumAnnualised := premium / optCalc.putContract.Strike / NumOfWeeks(optCalc.DTE) * 52.0
 	return optCalc.putContract.Strike, premium, premiumAnnualised, nil
 }
 func (optCalc *OptionCalculator) GetCallPremium() (float64, float64, float64, error) {
@@ -71,7 +71,7 @@ func (optCalc *OptionCalculator) GetCallPremium() (float64, float64, float64, er
 		return 0.0, 0.0, 0.0, fmt.Errorf("volume too low")
 	}
 	premium := (optCalc.callContract.Ask + optCalc.callContract.Bid) / 2
-	premiumAnnualised := premium / optCalc.callContract.Strike / float64(optCalc.DTE) * 365.0
+	premiumAnnualised := premium / optCalc.callContract.Strike / NumOfWeeks(optCalc.DTE) * 52.0
 	return optCalc.callContract.Strike, premium, premiumAnnualised, nil
 }
 
@@ -108,7 +108,7 @@ func findATMContracts(currentPrice float64, straddles []*finance.Straddle) *atm 
 }
 
 func findPutContract(price, weeklyAtr float64, dte int, straddles []*finance.Straddle) *finance.Contract {
-	atr := weeklyAtr * math.Pow(numOfWeeks(dte), 0.7)
+	atr := weeklyAtr * math.Pow(NumOfWeeks(dte), 0.7)
 	s := price - atr
 	var prevPut *finance.Contract
 	for _, straddle := range straddles {
@@ -121,7 +121,7 @@ func findPutContract(price, weeklyAtr float64, dte int, straddles []*finance.Str
 	return prevPut
 }
 func findCallContract(price, weeklyAtr float64, dte int, straddles []*finance.Straddle) *finance.Contract {
-	atr := weeklyAtr * math.Pow(numOfWeeks(dte), 0.7)
+	atr := weeklyAtr * math.Pow(NumOfWeeks(dte), 0.7)
 	s := price + atr
 	var currentCall *finance.Contract
 	for _, straddle := range straddles {
@@ -132,7 +132,7 @@ func findCallContract(price, weeklyAtr float64, dte int, straddles []*finance.St
 	}
 	return currentCall
 }
-func numOfWeeks(dte int) float64 {
+func NumOfWeeks(dte int) float64 {
 	if dte <= 7 && dte >= 5 {
 		return 1.0
 	}
