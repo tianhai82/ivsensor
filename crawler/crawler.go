@@ -180,6 +180,11 @@ func WriteHeader(sheet xlsx.Sheet) {
 }
 
 func CrawlSymbol(symbol string) ([]model.OptionRecord, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in CrawlSymbol", r)
+		}
+	}()
 	println("crawling", symbol)
 
 	q, err := quote.Get(symbol)
