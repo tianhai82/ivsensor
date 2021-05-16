@@ -63,6 +63,7 @@ func crawlOptions(c *gin.Context) {
 			}
 
 			err = stockAtr.PopulateATR(dateStr)
+			time.Sleep(50 * time.Millisecond)
 			if err != nil {
 				fmt.Println(symbol, err)
 			} else {
@@ -88,7 +89,6 @@ func crawlOptions(c *gin.Context) {
 			if i%10 == 0 {
 				fmt.Printf("%d out of %d.\n", i, total)
 			}
-			time.Sleep(500 * time.Millisecond)
 		}
 		duration := time.Since(startTime)
 		if duration.Minutes() > 55 {
