@@ -3,11 +3,48 @@ package ta
 import (
 	"errors"
 	"fmt"
+	"math"
 	"sort"
 
 	"github.com/piquette/finance-go"
 	"github.com/shopspring/decimal"
+	"github.com/tianhai82/ivsensor/model"
 )
+
+func ATRCandles(bars []model.Candle, period int) (float64, error) {
+	if len(bars) <= period {
+		return 0.0, errors.New("period should be smaller than length of bars")
+	}
+	trueRanges := make([]float64, 0, len(bars))
+	for i, bar := range bars {
+		if i == 0 {
+			continue
+		}
+		tr := TRCandles(bar, bars[i-1])
+		trueRanges = append(trueRanges, tr)
+	}
+	return EMA(trueRanges, period)
+}
+func TRCandles(currentBar, prevBar model.Candle) float64 {
+	a := currentBar.High - currentBar.Low
+	b := math.Abs(currentBar.High - prevBar.Close)
+	c := math.Abs(currentBar.Low - prevBar.Close)
+	f, _ := max(a, b, c)
+	return f
+}
+func max(vars ...float64) (float64, error) {
+	if len(vars) == 0 {
+		return 0.0, fmt.Errorf("at least 1 number")
+	}
+	max := vars[0]
+
+	for _, i := range vars {
+		if max < i {
+			max = i
+		}
+	}
+	return max, nil
+}
 
 func ATR(bars []finance.ChartBar, period int) (float64, error) {
 	if len(bars) <= period {

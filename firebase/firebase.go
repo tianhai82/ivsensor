@@ -20,6 +20,7 @@ var AuthClient *auth.Client
 var StorageClient *storage.Client
 var FirestoreClient *firestore.Client
 var Stocks []model.Stock
+var StockSymbols []string
 
 func init() {
 	var err error
@@ -68,5 +69,19 @@ func init() {
 			Stocks = append(Stocks, s)
 		}
 	}
-	println(len(Stocks))
+	println("number of stocks", len(Stocks))
+
+	reader2, err := bucket.Object("optionsSymbols.json").NewReader(context.Background())
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	dec2 := json.NewDecoder(reader2)
+
+	err = dec2.Decode(&StockSymbols)
+	if err != nil {
+		println(err)
+		return
+	}
+	println("number of stock symbols", len(StockSymbols))
 }
