@@ -110,10 +110,16 @@ func (s *StockATR) RetrieveOptionPremium() error {
 }
 
 func (s *StockATR) PopulateATR(date string) error {
-	candles, err := RetrieveHistory(s.Symbol, FrequencyWeekly, 12)
+	candles, err := RetrieveHistory(s.Symbol, FrequencyWeekly, 13)
 	if err != nil {
 		return fmt.Errorf("fail to retrieve weekly stock history: %v", err)
 	}
+	now := time.Now()
+	dayOfWeek := now.Weekday()
+	if dayOfWeek == time.Monday || dayOfWeek == time.Tuesday || dayOfWeek == time.Wednesday {
+		candles = candles[:len(candles)-1]
+	}
+
 	for _, candle := range candles {
 		s.Closes = append(s.Closes, candle.Close)
 	}

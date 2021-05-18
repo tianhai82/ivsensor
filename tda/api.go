@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sort"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -132,9 +133,9 @@ func saveOptionsRecords(today string) error {
 	writeHeader(sheet)
 	row := 1
 	for _, rec := range atrs {
-		negAtr, corr, _ := findMaxNegativeCorr(rec, atrs)
+		negAtrMap, _ := findMaxNegativeCorr(rec, atrs)
 		for _, premium := range rec.OptionPremiums {
-			writeRecord(sheet, row, rec, premium, negAtr, corr)
+			writeRecord(sheet, row, rec, premium, negAtrMap)
 			row++
 		}
 
@@ -155,23 +156,30 @@ func saveOptionsRecords(today string) error {
 	return nil
 }
 
-func findMaxNegativeCorr(atr StockATR, atrs []StockATR) (StockATR, float64, error) {
-	smallest := 1.0
-	var temp StockATR
+func findMaxNegativeCorr(atr StockATR, atrs []StockATR) (map[float64]StockATR, error) {
+	var corrs []float64
+	corrAtrMap := make(map[float64]StockATR)
 	for _, a := range atrs {
 		corr, err := stats.Correlation(atr.Closes, a.Closes)
-		if err == nil && corr < smallest {
-			smallest = corr
-			temp = a
+		if err != nil || corr >= 0 {
+			continue
 		}
+		corrs = append(corrs, corr)
+		corrAtrMap[corr] = a
 	}
-	if smallest < 0 {
-		return temp, smallest, nil
+	if len(corrs) == 0 {
+		return nil, fmt.Errorf("no negative correlation found")
 	}
-	return StockATR{}, 0.0, fmt.Errorf("no negative found")
+	sort.Float64s(corrs)
+	outMap := make(map[float64]StockATR)
+	for i := 0; i < 3; i++ {
+		corr := corrs[i]
+		outMap[corr] = corrAtrMap[corr]
+	}
+	return outMap, nil
 }
 
-func writeRecord(sheet xlsx.Sheet, row int, rec StockATR, premium StockOptionPremium, negAtr StockATR, corr float64) {
+func writeRecord(sheet xlsx.Sheet, row int, rec StockATR, premium StockOptionPremium, negAtrMap map[float64]StockATR) {
 	sheet.Cell(0, row).SetText(rec.Symbol)
 	sheet.Cell(1, row).SetFloat(rec.CurrentStockPrice)
 	sheet.Cell(2, row).SetFloat(rec.WeeklyATR)
@@ -184,9 +192,14 @@ func writeRecord(sheet xlsx.Sheet, row int, rec StockATR, premium StockOptionPre
 	sheet.Cell(7, row).SetFloat(premium.PutPremium)
 	sheet.Cell(8, row).SetFloat(premium.PutPremiumAnnualizedPercent)
 
-	if corr != 0.0 {
-		sheet.Cell(9, row).SetText(negAtr.Symbol)
-		sheet.Cell(10, row).SetFloat(corr)
+	col := 9
+	for corr, atr := range negAtrMap {
+		sheet.Cell(col, row).SetText(atr.Symbol)
+		col += 1
+		sheet.Cell(col, row).SetFloat(corr)
+		col += 1
+		sheet.Cell(col, row).SetFloat(atr.CurrentStockPrice)
+		col += 1
 	}
 }
 
@@ -205,5 +218,12 @@ func writeHeader(sheet xlsx.Sheet) {
 
 	sheet.Cell(9, 0).SetText("Most Negative Corr Symbol")
 	sheet.Cell(10, 0).SetText("Correlation")
+	sheet.Cell(11, 0).SetText("Stock Price")
+	sheet.Cell(12, 0).SetText("Most Negative Corr Symbol")
+	sheet.Cell(13, 0).SetText("Correlation")
+	sheet.Cell(14, 0).SetText("Stock Price")
+	sheet.Cell(15, 0).SetText("Most Negative Corr Symbol")
+	sheet.Cell(16, 0).SetText("Correlation")
+	sheet.Cell(17, 0).SetText("Stock Price")
 
 }
