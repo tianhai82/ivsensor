@@ -73,7 +73,10 @@ func crawlOptions(c *gin.Context) {
 					fmt.Println(symbol, err)
 				} else {
 					if len(stockAtr.OptionPremiums) > 0 {
-						firebase.FirestoreClient.Collection("tdaRecord").Add(context.Background(), stockAtr)
+						firebase.FirestoreClient.Collection("tdaRecord").
+							Doc(fmt.Sprintf("%s|%s", stockAtr.Symbol, stockAtr.CurrentDate)).
+							Set(context.Background(), stockAtr)
+						// firebase.FirestoreClient.Collection("tdaRecord").Add(context.Background(), stockAtr)
 					}
 				}
 			}
@@ -186,7 +189,7 @@ func writeRecord(sheet xlsx.Sheet, row int, rec StockATR, premium StockOptionPre
 
 	sheet.Cell(3, row).SetFloat(premium.NormalizedATR)
 	sheet.Cell(4, row).SetInt(premium.DTE)
-	sheet.Cell(5, row).SetText(premium.ExpiryDate)
+	sheet.Cell(5, row).SetDate(premium.ExpiryDate)
 
 	sheet.Cell(6, row).SetFloat(premium.PutStrike)
 	sheet.Cell(7, row).SetFloat(premium.PutPremium)
