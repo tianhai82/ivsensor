@@ -79,7 +79,7 @@
 
 <div class="h-full w-full flex flex-col gap-y-2 p-2 overflow-auto">
   <div
-    class="flex-1 elevation-4 rounded-lg bg-white flex flex-col gap-y-3 px-2 pb-2 overflow-x-auto"
+    class="flex-1 elevation-4 rounded-lg bg-white flex flex-col gap-y-3 px-2 pb-2"
   >
     <Autocomplete
       hideDetails
@@ -100,7 +100,7 @@
     {/await}
   </div>
   <div
-    class="flex-1 elevation-4 rounded-lg bg-white flex flex-col gap-y-3 px-2 pb-2 overflow-x-auto"
+    class="flex-1 elevation-4 rounded-lg bg-white flex flex-col gap-y-3 px-2 pb-2"
   >
     <Autocomplete
       hideDetails
@@ -130,7 +130,7 @@
           <Input
             hideDetails
             outlined
-            label="{stock1} vs {stock2} (> than 0.5 = good negative correlation)"
+            label="{stock1} vs {stock2} (> than 0.5 = negative correlated)"
             value={matchScore}
             readonly
           />

@@ -1,3 +1,4 @@
 /tmp
 .vscode
 __debug_bin
+.firebase/
