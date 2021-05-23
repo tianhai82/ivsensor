@@ -9,7 +9,6 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"github.com/gin-gonic/gin"
-	"github.com/montanaflynn/stats"
 	"github.com/plandem/xlsx"
 	"github.com/tianhai82/ivsensor/firebase"
 	"github.com/tianhai82/ivsensor/model"
@@ -136,9 +135,9 @@ func saveOptionsRecords(today string) error {
 	writeHeader(sheet)
 	row := 1
 	for _, rec := range atrs {
-		negAtrMap, _ := findMaxNegativeCorr(rec, atrs)
+		bestStocksMap := findBestPair(rec, atrs)
 		for _, premium := range rec.OptionPremiums {
-			writeRecord(sheet, row, rec, premium, negAtrMap)
+			writeRecord(sheet, row, rec, premium, bestStocksMap)
 			row++
 		}
 
@@ -159,30 +158,71 @@ func saveOptionsRecords(today string) error {
 	return nil
 }
 
-func findMaxNegativeCorr(atr StockATR, atrs []StockATR) (map[float64]StockATR, error) {
-	var corrs []float64
-	corrAtrMap := make(map[float64]StockATR)
+func findBestPair(atr StockATR, atrs []StockATR) map[float64]StockATR {
+	var scores []float64
+	scoresAtrMap := make(map[float64]StockATR)
 	for _, a := range atrs {
-		corr, err := stats.Correlation(atr.Closes, a.Closes)
-		if err != nil || corr >= 0 {
+		score, err := PairScore(atr.Candles, a.Candles)
+		if err != nil || score >= 0.5 {
 			continue
 		}
-		corrs = append(corrs, corr)
-		corrAtrMap[corr] = a
+		scores = append(scores, score)
+		scoresAtrMap[score] = a
 	}
-	if len(corrs) == 0 {
-		return nil, fmt.Errorf("no negative correlation found")
-	}
-	sort.Float64s(corrs)
+
+	sort.Sort(sort.Reverse(sort.Float64Slice(scores)))
 	outMap := make(map[float64]StockATR)
 	for i := 0; i < 3; i++ {
-		corr := corrs[i]
-		outMap[corr] = corrAtrMap[corr]
+		s := scores[i]
+		outMap[s] = scoresAtrMap[s]
 	}
-	return outMap, nil
+	return outMap
 }
 
-func writeRecord(sheet xlsx.Sheet, row int, rec StockATR, premium StockOptionPremium, negAtrMap map[float64]StockATR) {
+func PairScore(candles1, candles2 []model.Candle) (float64, error) {
+	if len(candles1) != len(candles2) {
+		return 0.0, fmt.Errorf("different slice lenght. 1st: %d. 2nd: %d.", len(candles1), len(candles2))
+	}
+	score := 0.0
+	for i, c := range candles1 {
+		var x, y int
+		if c.Close > c.Open {
+			x = 1
+		}
+		if candles2[i].Close > candles2[i].Open {
+			y = 1
+		}
+		if x != y {
+			score += 1.0
+		}
+	}
+	return score / float64(len(candles1)), nil
+}
+
+// func findMaxNegativeCorr(atr StockATR, atrs []StockATR) (map[float64]StockATR, error) {
+// 	var corrs []float64
+// 	corrAtrMap := make(map[float64]StockATR)
+// 	for _, a := range atrs {
+// 		corr, err := stats.Correlation(atr.Closes, a.Closes)
+// 		if err != nil || corr >= 0 {
+// 			continue
+// 		}
+// 		corrs = append(corrs, corr)
+// 		corrAtrMap[corr] = a
+// 	}
+// 	if len(corrs) == 0 {
+// 		return nil, fmt.Errorf("no negative correlation found")
+// 	}
+// 	sort.Float64s(corrs)
+// 	outMap := make(map[float64]StockATR)
+// 	for i := 0; i < 3; i++ {
+// 		corr := corrs[i]
+// 		outMap[corr] = corrAtrMap[corr]
+// 	}
+// 	return outMap, nil
+// }
+
+func writeRecord(sheet xlsx.Sheet, row int, rec StockATR, premium StockOptionPremium, pairMap map[float64]StockATR) {
 	sheet.Cell(0, row).SetText(rec.Symbol)
 	sheet.Cell(1, row).SetFloat(rec.CurrentStockPrice)
 	sheet.Cell(2, row).SetFloat(rec.WeeklyATR)
@@ -196,7 +236,7 @@ func writeRecord(sheet xlsx.Sheet, row int, rec StockATR, premium StockOptionPre
 	sheet.Cell(8, row).SetFloat(premium.PutPremiumAnnualizedPercent)
 
 	col := 9
-	for corr, atr := range negAtrMap {
+	for corr, atr := range pairMap {
 		sheet.Cell(col, row).SetText(atr.Symbol)
 		col += 1
 		sheet.Cell(col, row).SetFloat(corr)

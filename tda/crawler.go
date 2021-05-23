@@ -27,7 +27,7 @@ type StockATR struct {
 	CurrentDate       string
 	CurrentStockPrice float64
 	OptionPremiums    []StockOptionPremium
-	Closes            []float64
+	Candles           []model.Candle `json:"-"`
 }
 
 func (s *StockATR) RetrieveOptionPremium() error {
@@ -119,10 +119,7 @@ func (s *StockATR) PopulateATR(date string) error {
 	if dayOfWeek == time.Monday || dayOfWeek == time.Tuesday || dayOfWeek == time.Wednesday {
 		candles = candles[:len(candles)-1]
 	}
-
-	for _, candle := range candles {
-		s.Closes = append(s.Closes, candle.Close)
-	}
+	s.Candles = candles
 	atr, err := ta.ATRCandles(candles, 4)
 	if err != nil {
 		return err
