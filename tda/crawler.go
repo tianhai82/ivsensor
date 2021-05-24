@@ -114,6 +114,7 @@ func (s *StockATR) PopulateATR(date string) error {
 	if err != nil {
 		return fmt.Errorf("fail to retrieve weekly stock history: %v", err)
 	}
+	s.CurrentStockPrice = candles[len(candles)-1].Close
 	now := time.Now()
 	dayOfWeek := now.Weekday()
 	if dayOfWeek == time.Monday || dayOfWeek == time.Tuesday || dayOfWeek == time.Wednesday {
@@ -126,7 +127,6 @@ func (s *StockATR) PopulateATR(date string) error {
 	}
 	s.WeeklyATR = atr
 	s.CurrentDate = date
-	s.CurrentStockPrice = candles[len(candles)-1].Close
 	return nil
 }
 
