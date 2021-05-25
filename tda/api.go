@@ -163,7 +163,7 @@ func findBestPair(atr StockATR, atrs []StockATR) map[float64]StockATR {
 	scoresAtrMap := make(map[float64]StockATR)
 	for _, a := range atrs {
 		score, err := PairScore(atr.Candles, a.Candles)
-		if err != nil || score >= 0.5 {
+		if err != nil || score < 0.5 {
 			continue
 		}
 		scores = append(scores, score)
