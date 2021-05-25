@@ -172,9 +172,12 @@ func findBestPair(atr StockATR, atrs []StockATR) map[float64]StockATR {
 
 	sort.Sort(sort.Reverse(sort.Float64Slice(scores)))
 	outMap := make(map[float64]StockATR)
-	for i := 0; i < 3; i++ {
-		s := scores[i]
-		outMap[s] = scoresAtrMap[s]
+
+	for i, score := range scores {
+		outMap[score] = scoresAtrMap[score]
+		if i == 2 {
+			break
+		}
 	}
 	return outMap
 }
