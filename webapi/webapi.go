@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	_ "time/tzdata"
 
 	"github.com/gin-gonic/gin"
 	"github.com/tianhai82/ivsensor/firebase"
@@ -55,11 +56,20 @@ func analyseTicker(c *gin.Context) {
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
-	dateStr := time.Now().Format("2006-01-02")
+
+	dateStr := ""
+	zone, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		fmt.Println(err)
+		dateStr = time.Now().Format("2006-01-02")
+	} else {
+		dateStr = time.Now().In(zone).Format("2006-01-02")
+	}
+
 	stockAtr := tda.StockATR{
 		Symbol: ticker,
 	}
-	err := stockAtr.PopulateATR(dateStr)
+	err = stockAtr.PopulateATR(dateStr)
 	if err != nil {
 		fmt.Println(ticker, "fail to populate ATR", err.Error())
 		c.AbortWithStatus(http.StatusNoContent)

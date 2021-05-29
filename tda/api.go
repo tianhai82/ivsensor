@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sort"
 	"time"
+	_ "time/tzdata"
 
 	"cloud.google.com/go/firestore"
 	"github.com/gin-gonic/gin"
@@ -23,7 +24,16 @@ func AddApi(router *gin.RouterGroup) {
 
 func crawlOptions(c *gin.Context) {
 	startTime := time.Now()
-	dateStr := time.Now().Format("2006-01-02")
+
+	utc, _ := time.LoadLocation("UTC")
+	var now time.Time
+	zone, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		zone = utc
+	}
+	now = time.Now().In(zone)
+
+	dateStr := now.Format("2006-01-02")
 	task, err := firebase.FirestoreClient.Collection("tdaTask").Doc(dateStr).Get(context.Background())
 	dayTask := model.DayTask{
 		ID:              dateStr,

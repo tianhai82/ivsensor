@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	_ "time/tzdata"
 
 	"github.com/tianhai82/ivsensor/model"
 	"github.com/tianhai82/ivsensor/ta"
@@ -34,7 +35,15 @@ func (s *StockATR) RetrieveOptionPremium() error {
 	if s.WeeklyATR == 0.0 {
 		return fmt.Errorf("weekly ATR must be populate first")
 	}
-	today := time.Now()
+
+	utc, _ := time.LoadLocation("UTC")
+	var today time.Time
+	zone, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		zone = utc
+	}
+	today = time.Now().In(zone)
+
 	fromDate := today.Format("2006-01-02")
 	to := today.AddDate(0, 0, 14)
 	toDate := to.Format("2006-01-02")
@@ -52,7 +61,7 @@ func (s *StockATR) RetrieveOptionPremium() error {
 			fmt.Println(s.Symbol, "invalid expirationDate found", expirationDate)
 			continue
 		}
-		expDate, err := time.Parse("2006-01-02", segment[0])
+		expDate, err := time.ParseInLocation("2006-01-02", segment[0], zone)
 		if err != nil {
 			fmt.Println(s.Symbol, "invalid expirationDate found", expirationDate)
 			continue
@@ -115,7 +124,16 @@ func (s *StockATR) PopulateATR(date string) error {
 		return fmt.Errorf("fail to retrieve weekly stock history: %v", err)
 	}
 	s.CurrentStockPrice = candles[len(candles)-1].Close
-	now := time.Now()
+
+	var now time.Time
+	zone, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		fmt.Println(err)
+		now = time.Now()
+	} else {
+		now = time.Now().In(zone)
+	}
+
 	dayOfWeek := now.Weekday()
 	if dayOfWeek == time.Monday || dayOfWeek == time.Tuesday || dayOfWeek == time.Wednesday {
 		candles = candles[:len(candles)-1]
