@@ -105,7 +105,13 @@ func (s *StockATR) RetrieveOptionPremium() error {
 			fmt.Println(s.Symbol, "no suitable strike price found")
 			continue
 		}
-		if priceList[index].AskSize == 0 || priceList[index].BidSize == 0 {
+		minSize := 1
+		if priceList[index].StrikePrice < 20 {
+			minSize = 3
+		} else if priceList[index].StrikePrice < 50 {
+			minSize = 2
+		}
+		if priceList[index].AskSize < minSize || priceList[index].BidSize < minSize {
 			fmt.Println(s.Symbol, "bid or ask is empty")
 			continue
 		}
