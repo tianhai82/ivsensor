@@ -115,6 +115,9 @@ func (s *StockATR) RetrieveOptionPremium() error {
 			fmt.Println(s.Symbol, "bid or ask is empty")
 			continue
 		}
+		if (priceList[index].Ask / priceList[index].Bid) > 10.0 {
+			continue
+		}
 		premium.PutStrike = priceList[index].StrikePrice
 		premium.PutPremium = (priceList[index].Bid + priceList[index].Ask) / 2
 		premium.PutPremiumAnnualizedPercent = premium.PutPremium / premium.PutStrike / numOfWeeks(premium.DTE) * 52.0
