@@ -46,6 +46,18 @@ func max(vars ...float64) (float64, error) {
 	return max, nil
 }
 
+func TrueRangePercentile(bars []finance.ChartBar, percentile float64) (float64, error) {
+	trueRanges := make([]float64, 0, len(bars))
+	for i, bar := range bars {
+		if i == 0 {
+			continue
+		}
+		tr := TR(bar, bars[i-1])
+		trueRanges = append(trueRanges, tr)
+	}
+	return Percentile(trueRanges, percentile)
+}
+
 func ATR(bars []finance.ChartBar, period int) (float64, error) {
 	if len(bars) <= period {
 		return 0.0, errors.New("period should be smaller than length of bars")
@@ -135,4 +147,28 @@ func PercentRank(val float64, array []float64) float64 {
 
 	d := (val - prev) / (next - prev)
 	return (float64(idx) - 1.0 + d) / float64(arrLen-1)
+}
+
+func Percentile(values []float64, percentile float64) (float64, error) {
+
+	if len(values) == 0 {
+		return 0.0, fmt.Errorf("no values provided")
+	}
+	if percentile == 0.5 && len(values) == 1 {
+		return values[0], nil
+	}
+
+	sort.Float64s(values)
+
+	index := percentile * float64(len(values)-1)
+
+	if index < 0 || index >= float64(len(values)) {
+		return 0.0, fmt.Errorf("percentile must be between 0 to 1")
+	}
+
+	lower := int(math.Floor(index))
+	upper := lower + 1
+	weight := index - math.Floor(index)
+
+	return values[lower]*(1-weight) + values[upper]*weight, nil
 }

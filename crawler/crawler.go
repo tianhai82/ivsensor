@@ -214,6 +214,18 @@ func CrawlSymbol(symbol string) ([]model.OptionRecord, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// find the 60 percentile true range
+	trueRange60, err := ta.TrueRangePercentile(bars, 0.6)
+	if err != nil {
+		return nil, err
+	}
+
+	// ATR is smaller than trueRange60, use trueRange60
+	if atr < trueRange60 {
+		atr = trueRange60
+	}
+
 	atrp, err := ta.ATRP(bars, 4)
 	if err != nil {
 		return nil, err
