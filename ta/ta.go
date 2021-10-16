@@ -46,6 +46,17 @@ func max(vars ...float64) (float64, error) {
 	return max, nil
 }
 
+func TrueRangePercentileCandles(bars []model.Candle, percentile float64) (float64, error) {
+	trueRanges := make([]float64, 0, len(bars))
+	for i, bar := range bars {
+		if i == 0 {
+			continue
+		}
+		tr := TRCandles(bar, bars[i-1])
+		trueRanges = append(trueRanges, tr)
+	}
+	return Percentile(trueRanges, percentile)
+}
 func TrueRangePercentile(bars []finance.ChartBar, percentile float64) (float64, error) {
 	trueRanges := make([]float64, 0, len(bars))
 	for i, bar := range bars {

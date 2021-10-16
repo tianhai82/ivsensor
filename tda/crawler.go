@@ -148,10 +148,23 @@ func (s *StockATR) PopulateATR(date string) error {
 		candles = candles[:len(candles)-1]
 	}
 	s.Candles = candles
+
 	atr, err := ta.ATRCandles(candles, 4)
 	if err != nil {
 		return err
 	}
+
+	// find the 60 percentile true range
+	trueRange60, err := ta.TrueRangePercentileCandles(candles, 0.6)
+	if err != nil {
+		return err
+	}
+
+	// ATR is smaller than trueRange60, use trueRange60
+	if atr < trueRange60 {
+		atr = trueRange60
+	}
+
 	s.WeeklyATR = atr
 	s.CurrentDate = date
 	return nil
