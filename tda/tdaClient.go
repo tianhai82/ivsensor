@@ -30,7 +30,7 @@ const OptionRangeITM = "ITM"
 const OptionRangeOTM = "OTM"
 const OptionRangeNTM = "NTM"
 
-const baseURL = "https://stock-timing.appspot.com/rpc/tda"
+const baseURL = "https://stock-timing.appspot.com/rpc/tiger"
 
 var httpClient = &http.Client{
 	Timeout: 15 * time.Second,
