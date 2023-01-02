@@ -43,6 +43,9 @@ func crawlOptions(c *gin.Context) {
 		if status.Code(err) == codes.NotFound {
 			fmt.Println("day task not found. creating")
 			statuses := map[string]bool{}
+			if len(firebase.StockSymbols) == 0 {
+				firebase.Init()
+			}
 			for _, s := range firebase.StockSymbols {
 				statuses[s] = false
 			}
