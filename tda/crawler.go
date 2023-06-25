@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"math"
 	"sort"
-	"strconv"
-	"strings"
 	"time"
 	_ "time/tzdata"
 
+	"github.com/tianhai82/ivsensor/market_data"
 	"github.com/tianhai82/ivsensor/model"
 	"github.com/tianhai82/ivsensor/ta"
 )
@@ -43,86 +42,56 @@ func (s *StockATR) RetrieveOptionPremium() error {
 		zone = utc
 	}
 	today = time.Now().In(zone)
-
-	fromDate := today.Format("2006-01-02")
-	to := today.AddDate(0, 0, 14)
+	to := today.AddDate(0, 0, 7)
 	toDate := to.Format("2006-01-02")
-	chains, err := RetrieveOptions(s.Symbol, OptionContractPUT, OptionRangeOTM, fromDate, toDate)
+	priceList, err := market_data.RetrieveOptions(s.Symbol, OptionContractPUT, OptionRangeOTM, toDate)
 	if err != nil {
 		return fmt.Errorf("fail to retrieve option chain: %v", err)
 	}
-	if chains.Status != "SUCCESS" {
-		return fmt.Errorf("api status not success")
+	dte := priceList[0].Dte
+	expDate := time.Unix(priceList[0].Expiration, 0)
+	atrNormalized := s.WeeklyATR * math.Pow(numOfWeeks(int(dte)), 0.7)
+	highestStrike := s.CurrentStockPrice - atrNormalized
+	sort.Slice(priceList, func(i, j int) bool {
+		return priceList[i].Strike < priceList[j].Strike
+	})
+	index := -1
+	for i, price := range priceList {
+		if price.Strike > highestStrike {
+			index = i - 1
+			break
+		}
 	}
-
-	for expirationDate, priceMap := range chains.PutExpDateMap {
-		segment := strings.Split(expirationDate, ":")
-		if len(segment) != 2 {
-			fmt.Println(s.Symbol, "invalid expirationDate found", expirationDate)
-			continue
-		}
-		expDate, err := time.ParseInLocation("2006-01-02", segment[0], zone)
-		if err != nil {
-			fmt.Println(s.Symbol, "invalid expirationDate found", expirationDate)
-			continue
-		}
-		dte, err := strconv.Atoi(segment[1])
-		if err != nil {
-			fmt.Println(s.Symbol, "invalid expirationDate found", expirationDate)
-			continue
-		}
-		atrNormalized := s.WeeklyATR * math.Pow(numOfWeeks(dte), 0.7)
-
-		highestStrike := s.CurrentStockPrice - atrNormalized
-		premium := StockOptionPremium{
-			ExpiryDate:    expDate,
-			DTE:           dte,
-			NormalizedATR: atrNormalized,
-		}
-
-		var priceList []model.ExpDateOption
-		for _, list := range priceMap {
-			if len(list) < 1 {
-				continue
-			}
-			priceList = append(priceList, list[0])
-		}
-		sort.Slice(priceList, func(i, j int) bool {
-			return priceList[i].StrikePrice < priceList[j].StrikePrice
-		})
-		index := -1
-		for i, price := range priceList {
-			if price.StrikePrice > highestStrike {
-				index = i - 1
-				break
-			}
-		}
-		if index < 0 {
-			fmt.Println(s.Symbol, "no suitable strike price found")
-			continue
-		}
-		if priceList[index].StrikePrice > highestStrike {
-			fmt.Println(s.Symbol, "no suitable strike price found")
-			continue
-		}
-		minSize := 1
-		if priceList[index].StrikePrice < 20 {
-			minSize = 3
-		} else if priceList[index].StrikePrice < 50 {
-			minSize = 2
-		}
-		if priceList[index].AskSize < minSize || priceList[index].BidSize < minSize {
-			fmt.Println(s.Symbol, "bid or ask is empty")
-			continue
-		}
-		if (priceList[index].Ask / priceList[index].Bid) > 10.0 {
-			continue
-		}
-		premium.PutStrike = priceList[index].StrikePrice
-		premium.PutPremium = (priceList[index].Bid + priceList[index].Ask) / 2
-		premium.PutPremiumAnnualizedPercent = premium.PutPremium / premium.PutStrike / numOfWeeks(premium.DTE) * 52.0
-		s.OptionPremiums = append(s.OptionPremiums, premium)
+	if index < 0 {
+		fmt.Println(s.Symbol, "no suitable strike price found")
+		return nil
 	}
+	if priceList[index].Strike > highestStrike {
+		fmt.Println(s.Symbol, "no suitable strike price found")
+		return nil
+	}
+	minSize := 1
+	if priceList[index].Strike < 20 {
+		minSize = 3
+	} else if priceList[index].Strike < 50 {
+		minSize = 2
+	}
+	if int(priceList[index].AskSize) < minSize || int(priceList[index].BidSize) < minSize {
+		fmt.Println(s.Symbol, "bid or ask is empty")
+		return nil
+	}
+	if (priceList[index].Ask / priceList[index].Bid) > 10.0 {
+		return nil
+	}
+	premium := StockOptionPremium{
+		ExpiryDate:    expDate,
+		DTE:           int(dte),
+		NormalizedATR: atrNormalized,
+	}
+	premium.PutStrike = priceList[index].Strike
+	premium.PutPremium = (priceList[index].Bid + priceList[index].Ask) / 2
+	premium.PutPremiumAnnualizedPercent = premium.PutPremium / premium.PutStrike / numOfWeeks(premium.DTE) * 52.0
+	s.OptionPremiums = append(s.OptionPremiums, premium)
 
 	return nil
 }

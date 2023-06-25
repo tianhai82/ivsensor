@@ -139,3 +139,30 @@ type Underlying struct {
 	FiftyTwoWeekLow   float64 `json:"fiftyTwoWeekLow"`
 	Delayed           bool    `json:"delayed"`
 }
+
+type MarketDataResp struct {
+	Ask          []float64 `json:"ask"`
+	AskSize      []int32   `json:"askSize"`
+	Bid          []float64 `json:"bid"`
+	BidSize      []int32   `json:"bidSize"`
+	Dte          []int32   `json:"dte"`
+	Expiration   []int64   `json:"expiration"`
+	Mid          []float64 `json:"mid"`
+	OpenInterest []int     `json:"openInterest"`
+	Side         []string  `json:"side"`
+	Strike       []float64 `json:"strike"`
+	S            string    `json:"s"`
+}
+
+type StrikeDetails struct {
+	Ask          float64 `json:"ask"`
+	AskSize      int32   `json:"askSize"`
+	Bid          float64 `json:"bid"`
+	BidSize      int32   `json:"bidSize"`
+	Dte          int32   `json:"dte"`
+	Expiration   int64   `json:"expiration"`
+	Mid          float64 `json:"mid"`
+	OpenInterest int     `json:"openInterest"`
+	Side         string  `json:"side"`
+	Strike       float64 `json:"strike"`
+}
