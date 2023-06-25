@@ -3,7 +3,9 @@ package doc
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"net/http"
+	"time"
 
 	"cloud.google.com/go/storage"
 	"github.com/gin-gonic/gin"
@@ -67,4 +69,16 @@ func retrieveFile(filename string) (*storage.Reader, error) {
 		return nil, err
 	}
 	return bucket.Object(filename).NewReader(context.Background())
+}
+
+// return an array of 5 random int between 5 and 100
+func randInts() []int {
+	rand.Seed(time.Now().UnixNano())
+	return []int{
+		rand.Intn(5) + 5,
+		rand.Intn(5) + 5,
+		rand.Intn(5) + 5,
+		rand.Intn(5) + 5,
+		rand.Intn(5) + 5,
+	}
 }
