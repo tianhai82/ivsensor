@@ -46,12 +46,12 @@ func RetrieveHistory(symbol string, freqencyType string, period int) ([]model.Ca
 	return candles, err
 }
 
-func RetrieveOptions(symbol, contractType, optionRange, fromDate, toDate string) (model.Chains, error) {
-	url := fmt.Sprintf("%s/optionchain/%s/%s/%s/%s/%s", baseURL, symbol, contractType, optionRange, fromDate, toDate)
-	var chain model.Chains
-	err := makeGetRequest(url, &chain)
-	return chain, err
-}
+// func RetrieveOptions(symbol, contractType, optionRange, fromDate, toDate string) (model.Chains, error) {
+// 	url := fmt.Sprintf("%s/optionchain/%s/%s/%s/%s/%s", baseURL, symbol, contractType, optionRange, fromDate, toDate)
+// 	var chain model.Chains
+// 	err := makeGetRequest(url, &chain)
+// 	return chain, err
+// }
 
 func makeGetRequest(urlStr string, output interface{}) (err error) {
 	resp, err := makeRequest(urlStr)
